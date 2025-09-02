@@ -44,8 +44,15 @@ public class AuthController {
         LoginResponse response = authService.login(request);
         return ApiResponse.success("登录成功", response);
     }
+
     @PostMapping("/register")
     public ApiResponse<LoginResponse> register(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.login(request);
+        return ApiResponse.success("登录成功", response);
+    }
+
+    @PostMapping("/signup")
+    public ApiResponse<LoginResponse> signup(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ApiResponse.success("登录成功", response);
     }
@@ -69,10 +76,10 @@ public class AuthController {
         String currentUsername = (String) request.getAttribute("currentUsername");
         String currentUserId = (String) request.getAttribute("currentUserId");
         String currentUserRole = (String) request.getAttribute("currentUserRole");
-        
+
         // 重新生成Token
         UserDetailResponse userDetail = authService.getUserDetail(currentUsername);
-        
+
         // 构建新的登录响应
         LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
         userInfo.setUserId(userDetail.getUserId());
@@ -81,11 +88,11 @@ public class AuthController {
         userInfo.setStatus(userDetail.getStatus());
         userInfo.setPermissions(userDetail.getPermissions());
         userInfo.setManagedClasses(userDetail.getManagedClasses());
-        
+
         // 这里简化处理，实际应该重新生成token
         LoginResponse response = new LoginResponse();
         response.setUserInfo(userInfo);
-        
+
         return ApiResponse.success(response);
     }
 
