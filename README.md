@@ -1,6 +1,3 @@
-# test\_repository
+# test_repository
 
-这是一个测试仓库，用于测试 git 的使用，
-
-可以可以。
-
+This repository is used for basic Git practice.
