@@ -59,6 +59,7 @@ The page includes public service status, operational metrics and a teaching-only
 - [Spring Boot CRUD practice](docs/SpringBoot%20CRUD实践.md)
 - [MongoDB Compass practice](docs/MongoDB%20Compass实践.md)
 - [Git collaboration practice](docs/Git协作实践.md)
+- [WSL and Android debugging](docs/WSL与Android调试.md)
 
 ## Contributing
 
