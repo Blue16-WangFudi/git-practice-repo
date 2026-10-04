@@ -1,0 +1,108 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-sentinel}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-sentinel}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sentinel}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sentinel}
+    expose:
+      - "8080"
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  monitor-web:
+    build: ./monitor-web
+    expose:
+      - "80"
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sentinel}
+      MYSQL_USER: ${MYSQL_USER:-sentinel}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sentinel}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD:-change-me} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  mongodb:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-change-me}
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - "127.0.0.1:27019:27017"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username ${MONGO_ROOT_USER:-root} --password ${MONGO_ROOT_PASSWORD:-change-me} --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-sentinel}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-sentinel}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    expose:
+      - "5672"
+      - "15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "8088:80"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - monitor-web
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  mongodb-data:
+  redis-data:
+  rabbitmq-data:
+

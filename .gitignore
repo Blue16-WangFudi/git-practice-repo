@@ -1,22 +1,30 @@
-# Java build artifacts
+# Java and build artifacts
 *.class
 *.jar
 *.war
 *.ear
-
-# Build output
-/target/
+**/target/
+**/.m2/
 /build/
 /out/
+**/build/
+**/dist/
+
+# Node, Flutter and Gradle caches
+**/node_modules/
+**/.vite/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+.gradle/
+coverage/
 
 # IDEs and editors
 .idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
-.vscode/
-
-# Eclipse
 .project
 .classpath
 .settings/
@@ -25,12 +33,13 @@
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs, local env and secrets
 *.log
-
-# Local env/secrets
 .env
 .env.*
+!.env.example
 key.json
 *.keystore
 *.jks
+__pycache__/
+.pytest_cache/

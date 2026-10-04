@@ -1,0 +1,33 @@
+# 生产环境按域名拆分 server block；下面只是模板，不包含真实域名和证书路径。
+
+server {
+    listen 80;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass http://backend:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name status.example.com;
+
+    location / {
+        proxy_pass http://monitor-web:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# HTTPS 生产配置中，在每个 server block 中增加：
+# listen 443 ssl http2;
+# ssl_certificate /etc/nginx/certs/fullchain.pem;
+# ssl_certificate_key /etc/nginx/certs/privkey.pem;
+# 并将 80 端口重定向到 443。
