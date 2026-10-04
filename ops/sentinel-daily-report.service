@@ -1,0 +1,10 @@
+[Unit]
+Description=Sentinel Monitor daily health report
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sentinel-monitor
+EnvironmentFile=-/etc/sentinel-monitor/report.env
+ExecStart=/usr/bin/python3 /opt/sentinel-monitor/ops/health-report.py

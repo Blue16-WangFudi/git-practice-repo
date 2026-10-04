@@ -1,0 +1,26 @@
+spring:
+  autoconfigure:
+    exclude: []
+  datasource:
+    url: jdbc:mysql://mysql:3306/sentinel?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+    username: sentinel
+    password: sentinel
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+  redis:
+    host: redis
+    port: 6379
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: sentinel
+    password: sentinel
+
+sentinel:
+  features:
+    persistence: true
+    redis: true
+    rabbitmq: true
+
