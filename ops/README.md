@@ -8,7 +8,15 @@
 STATUS_API_URL=http://127.0.0.1:8088 python3 ops/health-report.py
 ```
 
-配置 `FEISHU_WEBHOOK_URL` 后，脚本会把同一份日报发送到飞书群机器人。Webhook、域名、邮件系统等生产凭据不写入仓库。
+脚本默认只在本地生成日报，不会外发。配置 `FEISHU_WEBHOOK_URL` 后，还必须显式加 `--send-feishu` 才会把日报发送到飞书群机器人：
+
+```bash
+STATUS_API_URL=http://127.0.0.1:8088 \
+FEISHU_WEBHOOK_URL='https://open.feishu.cn/...' \
+python3 ops/health-report.py --send-feishu
+```
+
+Webhook、域名、邮件系统等生产凭据不写入仓库。
 
 ## Linux systemd 定时任务
 

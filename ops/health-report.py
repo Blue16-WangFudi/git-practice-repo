@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import urllib.request
+import argparse
 from datetime import datetime, timezone
 
 
@@ -35,6 +36,7 @@ def build_report(base_url):
     health = get_json(base_url.rstrip("/") + "/api/health")
     status = get_json(base_url.rstrip("/") + "/api/v1/status")
     metrics = get_json(base_url.rstrip("/") + "/api/v1/metrics/summary?windowSeconds=300")
+    cache = get_json(base_url.rstrip("/") + "/api/v1/metrics/cache")
     overview = status.get("overview", {})
     latency = metrics.get("latency", {})
     incident_count = len(status.get("incidents", []))
@@ -55,6 +57,9 @@ def build_report(base_url):
         ),
         "延迟：P50 {}ms / P90 {}ms / P99 {}ms / P999 {}ms".format(
             latency.get("p50Ms", 0), latency.get("p90Ms", 0), latency.get("p99Ms", 0), latency.get("p999Ms", 0)
+        ),
+        "Redis：命中 {} 次 / 未命中 {} 次 / 命中率 {}%".format(
+            cache.get("hits", 0), cache.get("misses", 0), cache.get("hitRate", 0)
         ),
         "",
         "容器资源：",
@@ -81,8 +86,17 @@ def send_feishu(report):
 
 
 if __name__ == "__main__":
-    api_url = os.getenv("STATUS_API_URL", "http://127.0.0.1:8088")
+    parser = argparse.ArgumentParser(description="生成 Sentinel Monitor 日报")
+    parser.add_argument("--base-url", default=os.getenv("STATUS_API_URL", "http://127.0.0.1:8088"))
+    parser.add_argument(
+        "--send-feishu",
+        action="store_true",
+        help="显式允许将日报发送到 FEISHU_WEBHOOK_URL；默认只打印到本地",
+    )
+    args = parser.parse_args()
+
+    api_url = args.base_url
     report_text = build_report(api_url)
     print(report_text)
-    if send_feishu(report_text):
+    if args.send_feishu and send_feishu(report_text):
         print("\n日报已发送到飞书。")
