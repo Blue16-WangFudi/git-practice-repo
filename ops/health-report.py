@@ -6,7 +6,12 @@ import os
 import subprocess
 import urllib.request
 import argparse
+import base64
+import hashlib
+import hmac
+import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def get_json(url):
@@ -25,14 +30,19 @@ def docker_stats():
             check=False,
         )
         if result.returncode != 0:
-            return ["Docker 资源信息不可用：" + (result.stderr or "未知错误").strip()]
+            return [{"error": "Docker 资源信息不可用：" + (result.stderr or "未知错误").strip()}]
         rows = result.stdout.strip().splitlines()
-        return ["- {}：CPU {}，内存 {}".format(*row.split("|", 2)) for row in rows if row.count("|") == 2]
+        return [
+            {"name": values[0], "cpu": values[1], "memory": values[2]}
+            for row in rows
+            if row.count("|") == 2
+            for values in [row.split("|", 2)]
+        ]
     except (OSError, subprocess.SubprocessError) as exc:
-        return ["Docker 资源信息不可用：{}".format(exc)]
+        return [{"error": "Docker 资源信息不可用：{}".format(exc)}]
 
 
-def build_report(base_url):
+def build_report_data(base_url):
     health = get_json(base_url.rstrip("/") + "/api/health")
     status = get_json(base_url.rstrip("/") + "/api/v1/status")
     metrics = get_json(base_url.rstrip("/") + "/api/v1/metrics/summary?windowSeconds=300")
@@ -42,15 +52,35 @@ def build_report(base_url):
     incident_count = len(status.get("incidents", []))
     generated = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
+    return {
+        "generatedAt": generated,
+        "service": {
+            "status": status.get("overallStatus", "unknown"),
+            "apiStatus": health.get("status", "unknown"),
+            "activeIncidentCount": incident_count,
+        },
+        "servers": overview,
+        "performance": metrics,
+        "cache": cache,
+        "containers": docker_stats(),
+    }
+
+
+def format_text(report):
+    service = report["service"]
+    servers = report["servers"]
+    metrics = report["performance"]
+    latency = metrics.get("latency", {})
+    cache = report["cache"]
     lines = [
         "Sentinel Monitor 日报",
-        "生成时间：{}".format(generated),
+        "生成时间：{}".format(report["generatedAt"]),
         "",
-        "服务状态：{}（API {}）".format(status.get("overallStatus", "unknown"), health.get("status", "unknown")),
+        "服务状态：{}（API {}）".format(service["status"], service["apiStatus"]),
         "服务器：在线 {} / 总数 {}，离线 {}".format(
-            overview.get("onlineServers", 0), overview.get("totalServers", 0), overview.get("offlineServers", 0)
+            servers.get("onlineServers", 0), servers.get("totalServers", 0), servers.get("offlineServers", 0)
         ),
-        "活动事件：{} 条".format(incident_count),
+        "活动事件：{} 条".format(service["activeIncidentCount"]),
         "",
         "最近 5 分钟请求：{} 次，QPS：{}，5xx：{}".format(
             metrics.get("requestCount", 0), metrics.get("qps", 0), metrics.get("serverErrorCount", 0)
@@ -64,15 +94,26 @@ def build_report(base_url):
         "",
         "容器资源：",
     ]
-    lines.extend(docker_stats())
+    for container in report["containers"]:
+        if "error" in container:
+            lines.append(container["error"])
+        else:
+            lines.append("- {}：CPU {}，内存 {}".format(container["name"], container["cpu"], container["memory"]))
     return "\n".join(lines)
 
 
 def send_feishu(report):
     webhook = os.getenv("FEISHU_WEBHOOK_URL", "").strip()
     if not webhook:
-        return False
-    payload = json.dumps({"msg_type": "text", "content": {"text": report}}).encode("utf-8")
+        raise RuntimeError("未配置 FEISHU_WEBHOOK_URL")
+    payload_data = {"msg_type": "text", "content": {"text": report}}
+    secret = os.getenv("FEISHU_SECRET", "").strip()
+    if secret:
+        timestamp = str(int(time.time()))
+        string_to_sign = "{}\n{}".format(timestamp, secret).encode("utf-8")
+        signature = hmac.new(secret.encode("utf-8"), string_to_sign, hashlib.sha256).digest()
+        payload_data.update({"timestamp": timestamp, "sign": base64.b64encode(signature).decode("utf-8")})
+    payload = json.dumps(payload_data).encode("utf-8")
     request = urllib.request.Request(
         webhook,
         data=payload,
@@ -88,6 +129,8 @@ def send_feishu(report):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="生成 Sentinel Monitor 日报")
     parser.add_argument("--base-url", default=os.getenv("STATUS_API_URL", "http://127.0.0.1:8088"))
+    parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument("--output", help="可选：把日报同时保存到本地文件")
     parser.add_argument(
         "--send-feishu",
         action="store_true",
@@ -96,7 +139,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     api_url = args.base_url
-    report_text = build_report(api_url)
-    print(report_text)
+    report_data = build_report_data(api_url)
+    report_text = format_text(report_data)
+    output = report_text if args.format == "text" else json.dumps(report_data, ensure_ascii=False, indent=2)
+    if args.output:
+        Path(args.output).write_text(output + "\n", encoding="utf-8")
+    print(output)
     if args.send_feishu and send_feishu(report_text):
         print("\n日报已发送到飞书。")
