@@ -33,10 +33,10 @@ $env:PUB_CACHE = 'D:\DevTools\sentinel-monitor-pub-cache'
 & 'D:\DevTools\Flutter SDK\flutter\bin\flutter.bat' build web --release --dart-define=API_BASE_URL=http://127.0.0.1:8088
 ```
 
-Android APK 命令如下，但当前机器还没有 Android SDK：
+Android APK 已在本机验证成功：
 
 ```powershell
 & 'D:\DevTools\Flutter SDK\flutter\bin\flutter.bat' build apk --release --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-安装 Android Studio/Android SDK 后，先执行 `flutter doctor`，再执行上述命令。iOS IPA 需要 macOS、Xcode、Apple 证书和签名环境，Windows 不能直接生成正式 IPA。
+本机 Android SDK 位于 `D:\DevTools\AndroidSDK`，使用 JDK 17。iOS IPA 需要 macOS、Xcode、Apple 证书和签名环境，Windows 不能直接生成正式 IPA。
