@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { debounce, filterServices, throttle } from './utils/events.js'
 
 const overview = ref({ totalServers: 0, onlineServers: 0, offlineServers: 0 })
 const loading = ref(false)
@@ -25,6 +26,14 @@ const serviceFormVisible = ref(false)
 const editingServiceId = ref(null)
 const serviceSaving = ref(false)
 const serviceForm = ref(createEmptyService())
+const serviceSearch = ref('')
+const settledServiceSearch = ref('')
+const showBackToTop = ref(false)
+const applyServiceSearch = debounce((value) => { settledServiceSearch.value = value }, 300)
+watch(serviceSearch, applyServiceSearch)
+const filteredServices = computed(() => filterServices(managedServices.value, settledServiceSearch.value))
+const searchPending = computed(() => serviceSearch.value !== settledServiceSearch.value)
+const updateScrollPosition = throttle(() => { showBackToTop.value = window.scrollY > 500 }, 150)
 let refreshTimer
 
 const statusMeta = {
@@ -145,6 +154,7 @@ async function removeManagedService(service) {
 }
 
 async function loadDashboard() {
+  if (loading.value) return
   loading.value = true
   try {
     const [payload, overviewPayload, performancePayload, cachePayload, serversPayload] = await Promise.all([
@@ -228,13 +238,25 @@ function closeSubscription() {
   email.value = ''
 }
 
+function scrollToTop() {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' })
+}
+
 onMounted(() => {
   loadDashboard()
   loadManagedServices()
   refreshTimer = setInterval(loadDashboard, 15000)
+  window.addEventListener('scroll', updateScrollPosition, { passive: true })
+  updateScrollPosition()
 })
 
-onBeforeUnmount(() => clearInterval(refreshTimer))
+onBeforeUnmount(() => {
+  clearInterval(refreshTimer)
+  window.removeEventListener('scroll', updateScrollPosition)
+  updateScrollPosition.cancel()
+  applyServiceSearch.cancel()
+})
 </script>
 
 <template>
@@ -383,6 +405,12 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
         <p v-if="serviceError" class="management-message error">{{ serviceError }}</p>
         <p v-if="serviceNotice" class="management-message success">{{ serviceNotice }}</p>
 
+        <div class="service-search">
+          <label for="service-search">搜索服务</label>
+          <input id="service-search" v-model="serviceSearch" type="search" placeholder="名称、标识、分组或接口地址" />
+          <span role="status" aria-live="polite">{{ searchPending ? '等待输入完成…' : `${filteredServices.length} 个结果` }}</span>
+        </div>
+
         <form v-if="serviceFormVisible" class="service-form" @submit.prevent="saveManagedService">
           <div class="form-field">
             <label for="service-key">服务标识</label>
@@ -420,9 +448,9 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
         </form>
 
         <div v-if="servicesLoading" class="empty-metrics">服务目录加载中...</div>
-        <div v-else-if="managedServices.length" class="managed-service-list">
+        <div v-else-if="filteredServices.length" class="managed-service-list" :aria-busy="searchPending">
           <div class="managed-service-head"><span>服务</span><span>分组 / 接口</span><span>状态</span><span>操作</span></div>
-          <div v-for="service in managedServices" :key="service.id" class="managed-service-row">
+          <div v-for="service in filteredServices" :key="service.id" class="managed-service-row">
             <div>
               <strong>{{ service.name }}</strong>
               <small>{{ service.serviceKey }}</small>
@@ -438,6 +466,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
             </div>
           </div>
         </div>
+        <div v-else-if="managedServices.length" class="empty-metrics">没有匹配的服务，请调整搜索条件</div>
         <div v-else class="empty-metrics">还没有服务，点击“新增服务”开始维护服务目录</div>
       </section>
 
@@ -454,7 +483,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
         <template v-if="!subscribed">
           <p class="eyebrow">GET UPDATES</p>
           <h2 id="subscribe-title">订阅服务状态更新</h2>
-          <p>当服务出现异常或恢复时，我们会向你的邮箱发送通知。</p>
+          <p>当前仅保存订阅信息，自动状态邮件尚未启用。</p>
           <form @submit.prevent="submitSubscription">
             <label for="email">邮箱地址</label>
             <input id="email" v-model="email" type="email" placeholder="you@example.com" required />
@@ -467,10 +496,12 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
         <template v-else>
           <div class="success-mark">✓</div>
           <h2 id="subscribe-title">订阅已保存</h2>
-          <p>后续会将服务状态通知发送到 {{ email }}。</p>
+          <p>{{ email }} 的订阅信息已保存。自动邮件通知尚未启用。</p>
           <button class="subscribe-submit" type="button" @click="closeSubscription">完成</button>
         </template>
       </section>
     </div>
+    <button v-if="showBackToTop && !showSubscribe" class="back-to-top" type="button"
+      @click="scrollToTop">↑ 返回顶部</button>
   </main>
 </template>

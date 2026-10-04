@@ -10,6 +10,19 @@ permissions:
   contents: read
 
 jobs:
+  ops:
+    name: Health report unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test local reporting and notification safety
+        run: python -m unittest discover -s ops -p "test_*.py" -v
+
   backend:
     name: Backend test and package
     runs-on: ubuntu-latest
@@ -47,6 +60,8 @@ jobs:
           cache-dependency-path: monitor-web/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Test debounce and throttle
+        run: npm test
       - name: Build
         run: npm run build
 
