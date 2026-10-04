@@ -61,6 +61,8 @@ The page includes public service status, operational metrics and a teaching-only
 - [Git collaboration practice](docs/Git协作实践.md)
 - [WSL and Android debugging](docs/WSL与Android调试.md)
 
+Android 真机调试一键脚本：`scripts/flutter-android-run.ps1`。
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). New work should use a feature or fix branch, pass the relevant local checks and be submitted through a Pull Request.

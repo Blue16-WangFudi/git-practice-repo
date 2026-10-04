@@ -52,6 +52,14 @@ $env:ANDROID_HOME = 'D:\DevTools\AndroidSDK'
 & 'D:\DevTools\Flutter SDK\flutter\bin\flutter.bat' run -d <设备ID> --dart-define=API_BASE_URL=http://电脑局域网IP:8088
 ```
 
+也可以使用项目脚本自动检查设备并启动：
+
+```powershell
+.\scripts\flutter-android-run.ps1 -ApiBaseUrl http://电脑局域网IP:8088
+```
+
+本次检查时 `adb devices -l` 为空，说明当前没有连接并授权的 Android 真机；这不是 Flutter 或 APK 构建错误。
+
 如果必须让 WSL 直接看到 USB 设备，需要额外配置 `usbipd-win` 把 USB 设备附加到 WSL；这不是本机当前已验证的路径。教学项目先采用 Windows Flutter + Windows ADB，后端和容器仍然运行在 WSL/Docker 环境中，排障成本更低。
 
 ## 常见问题
