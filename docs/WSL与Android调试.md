@@ -62,6 +62,17 @@ $env:ANDROID_HOME = 'D:\DevTools\AndroidSDK'
 
 如果必须让 WSL 直接看到 USB 设备，需要额外配置 `usbipd-win` 把 USB 设备附加到 WSL；这不是本机当前已验证的路径。教学项目先采用 Windows Flutter + Windows ADB，后端和容器仍然运行在 WSL/Docker 环境中，排障成本更低。
 
+## 没有 Android 真机时
+
+没有手机不影响 Flutter 学习和接口联调。直接使用 Chrome：
+
+```powershell
+$env:PUB_CACHE = 'D:\DevTools\sentinel-monitor-pub-cache'
+& 'D:\DevTools\Flutter SDK\flutter\bin\flutter.bat' run -d chrome --web-port 5200 --dart-define=API_BASE_URL=http://127.0.0.1:8088
+```
+
+本机已启动过该调试入口：`http://127.0.0.1:5200`。它访问的是 Docker 网关，能验证 Flutter 页面、Spring Boot API、MySQL/Redis 数据链路。以后拿到 Android 设备后，再使用 APK 或 `flutter-android-run.ps1`，不需要修改业务代码。
+
 ## 常见问题
 
 - `Android SDK location contains spaces`：SDK 应放在 `D:\DevTools\AndroidSDK`，不要放到带空格的目录。

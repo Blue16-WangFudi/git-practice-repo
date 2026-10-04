@@ -40,3 +40,9 @@ Android APK 已在本机验证成功：
 ```
 
 本机 Android SDK 位于 `D:\DevTools\AndroidSDK`，使用 JDK 17。iOS IPA 需要 macOS、Xcode、Apple 证书和签名环境，Windows 不能直接生成正式 IPA。
+
+没有 Android 真机时，可以直接用 Chrome 联调：
+
+```powershell
+& 'D:\DevTools\Flutter SDK\flutter\bin\flutter.bat' run -d chrome --web-port 5200 --dart-define=API_BASE_URL=http://127.0.0.1:8088
+```
